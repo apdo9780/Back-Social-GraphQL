@@ -70,7 +70,7 @@ const socketService = getSocketInstance();
 const recId = friendRequest.recipient.toString(); // اللي جاله الطلب
 const senId = friendRequest.sender.toString(); // اللي بعت الطلب
 
-socketService.emitToUser(recId, 'new friend request', {
+socketService.emitToUser(recId, 'new_friend_request', {
     sender: {
         _id: senId,
         

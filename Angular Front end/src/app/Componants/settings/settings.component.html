@@ -1,0 +1,141 @@
+<section class="settings-page">
+  <header class="hero">
+    <p class="eyebrow">Account</p>
+    <h1>Profile Studio</h1>
+    <p class="subtitle">Manage your identity, profile image, and account credentials in one place.</p>
+    <div class="hero-meta">
+      <span>private account tools</span>
+      @if (user(); as currentUser) {
+        <span>{{ currentUser.username }}</span>
+      }
+    </div>
+  </header>
+
+  @if (statusMessage()) {
+    <p class="status" [class.success]="statusType() === 'success'" [class.error]="statusType() === 'error'">
+      {{ statusMessage() }}
+    </p>
+  }
+
+  <section class="card profile-card">
+    <div class="section-head">
+      <h2>Session Profile</h2>
+      <span class="chip">live</span>
+    </div>
+    @if (user(); as currentUser) {
+      <dl class="profile-grid">
+        <div>
+          <dt>Username</dt>
+          <dd>{{ currentUser.username }}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>{{ currentUser.email }}</dd>
+        </div>
+        <div>
+          <dt>Name</dt>
+          <dd>{{ (currentUser.firstName ?? '') + ' ' + (currentUser.lastName ?? '') }}</dd>
+        </div>
+        <div>
+          <dt>Role</dt>
+          <dd>{{ currentUser.role ?? 'user' }}</dd>
+        </div>
+      </dl>
+    }
+  </section>
+
+  <section class="card avatar-card">
+    <div class="section-head">
+      <h2>Profile Image</h2>
+      <p>Use a square image for best cropping.</p>
+    </div>
+    <div class="avatar-wrap">
+      <img [src]="avatarUrl()" alt="Profile avatar" (error)="onAvatarImageError($event)" />
+      <div class="controls">
+        <input
+          #avatarInput
+          class="file-input-hidden"
+          type="file"
+          accept="image/*"
+          [disabled]="isUploading()"
+          (change)="onAvatarSelected($event)"
+        />
+        <div
+          class="dropzone"
+          role="button"
+          tabindex="0"
+          [class.active]="isAvatarDragOver()"
+          [class.disabled]="isUploading()"
+          (click)="!isUploading() && triggerAvatarFilePicker(avatarInput)"
+          (keydown)="onDropZoneKeydown($event, avatarInput)"
+          (dragover)="!isUploading() && onAvatarDragOver($event)"
+          (dragleave)="onAvatarDragLeave($event)"
+          (drop)="!isUploading() && onAvatarDrop($event)"
+        >
+          <p class="dropzone-title">Drop image here</p>
+          <p class="dropzone-subtitle">or click to browse</p>
+        </div>
+        <small>{{ selectedAvatarFile?.name || 'No image selected' }}</small>
+        <div class="avatar-actions">
+          <button type="button" class="muted" (click)="selectedAvatarFile = null" [disabled]="!selectedAvatarFile || isUploading()">
+            Clear
+          </button>
+          <button type="button" (click)="uploadAvatar()" [disabled]="!selectedAvatarFile || isUploading()">
+            {{ isUploading() ? 'Uploading...' : 'Upload image' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <h2>Profile Information</h2>
+      <p>Current password is required to save changes.</p>
+    </div>
+    <form (ngSubmit)="saveProfile()">
+      <div class="grid">
+        <label>
+          Username
+          <input type="text" [(ngModel)]="username" name="username" required minlength="3" />
+        </label>
+
+        <label>
+          First name
+          <input type="text" [(ngModel)]="firstName" name="firstName" />
+        </label>
+
+        <label>
+          Last name
+          <input type="text" [(ngModel)]="lastName" name="lastName" />
+        </label>
+
+        <label>
+          Email
+          <input type="email" [(ngModel)]="email" name="email" required />
+        </label>
+
+        <label class="wide">
+          Bio
+          <textarea [(ngModel)]="bio" name="bio" maxlength="500" placeholder="Tell people about yourself"></textarea>
+        </label>
+
+        <label>
+          Current password
+          <input type="password" [(ngModel)]="currentPassword" name="currentPassword" required minlength="6" />
+        </label>
+
+        <label>
+          New password (optional)
+          <input type="password" [(ngModel)]="newPassword" name="newPassword" minlength="6" />
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" [disabled]="isSaving() || isLoading()">
+          {{ isSaving() ? 'Saving...' : 'Save settings' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</section>

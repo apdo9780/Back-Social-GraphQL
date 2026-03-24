@@ -24,7 +24,7 @@ export class SocketService {
     this.io = new SocketServer(server, {
       pingTimeout: 60000,
       cors: {
-        origin: 'http://localhost:4200',
+        origin: process.env.CLIENT_URL || 'http://localhost:4200',
         credentials: true,
         methods: ['GET', 'POST']
       },
@@ -74,29 +74,29 @@ export class SocketService {
       this.broadcastUserStatus(userId, 'online');
 
       // Chat room events
-      socket.on('join chat', (chatId: string) => {
+      socket.on('join_chat', (chatId: string) => {
         socket.join(chatId);
-        socket.to(chatId).emit('user joined', {
+        socket.to(chatId).emit('user_joined', {
           chatId,
           user: socket.user
         });
       });
 
-      socket.on('leave chat', (chatId: string) => {
+      socket.on('leave_chat', (chatId: string) => {
         socket.leave(chatId);
-        socket.to(chatId).emit('user left', {
+        socket.to(chatId).emit('user_left', {
           chatId,
           user: socket.user
         });
       });
 
       // Messaging events
-      socket.on('new message', async (message: any) => {
+      socket.on('new_message', async (message: any) => {
         const chatId = message.chatId;
         if (!chatId) return;
 
         // Broadcast the message to all users in the chat room
-        socket.to(chatId).emit('new message', {
+        socket.to(chatId).emit('new_message', {
           ...message,
           _id: Date.now().toString(), // temporary ID until persisted
           timestamp: new Date(),
@@ -111,7 +111,7 @@ export class SocketService {
         });
 
         // Send delivery status back to sender
-        socket.emit('message delivered', {
+        socket.emit('message_delivered', {
           messageId: message._id,
           status: 'delivered',
           timestamp: new Date()
@@ -119,8 +119,8 @@ export class SocketService {
       });
 
       // Typing indicators
-      socket.on('typing', ({ chatId, isTyping }: { chatId: string; isTyping: boolean }) => {
-        socket.to(chatId).emit(isTyping ? 'typing' : 'stop typing', {
+      socket.on('typing_status', ({ chatId, isTyping }: { chatId: string; isTyping: boolean }) => {
+        socket.to(chatId).emit(isTyping ? 'typing_started' : 'typing_stopped', {
           chatId,
           user: socket.user
         });
@@ -153,7 +153,7 @@ export class SocketService {
       });
 
       // User status events
-      socket.on('set status', (status: 'online' | 'away') => {
+      socket.on('set_status', (status: 'online' | 'away') => {
         this.updateUserStatus(userId, status);
         this.broadcastUserStatus(userId, status);
       });
@@ -188,7 +188,7 @@ export class SocketService {
 
   private broadcastUserStatus(userId: string, status: 'online' | 'offline' | 'away') {
     // Notify friends about status change
-    this.io.emit('user status changed', {
+    this.io.emit('user_status_changed', {
       userId,
       status,
       timestamp: new Date()

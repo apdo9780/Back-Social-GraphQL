@@ -1,0 +1,8 @@
+@if (isLoading()) {
+	<div class="global-loading" aria-live="polite" aria-label="Loading">
+		<div class="global-loading__spinner" aria-hidden="true"></div>
+		<span>Loading...</span>
+	</div>
+}
+
+<router-outlet />

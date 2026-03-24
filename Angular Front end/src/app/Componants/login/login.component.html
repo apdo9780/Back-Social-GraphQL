@@ -1,0 +1,32 @@
+<section class="auth-page">
+  <div class="card">
+    <p class="eyebrow">Welcome back</p>
+    <h1>Sign in to your social pulse</h1>
+    <p class="subtitle">Connect with your network, jump into chats, and manage your feed in one place.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+      <label>
+        Email
+        <input type="email" formControlName="email" placeholder="you@example.com" />
+      </label>
+
+      <label>
+        Password
+        <input type="password" formControlName="password" placeholder="At least 6 characters" />
+      </label>
+
+      <button type="submit" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Signing in...' : 'Sign in' }}
+      </button>
+    </form>
+
+    @if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+    }
+
+    <p class="footnote">
+      Need an account?
+      <a routerLink="/register">Create one</a>
+    </p>
+  </div>
+</section>

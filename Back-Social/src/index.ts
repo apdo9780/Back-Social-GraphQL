@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import connectDB from './config/database';
 import { errorHandler } from './middlewares/error';
 import { SocketService } from './services/socket.service';
@@ -36,6 +37,7 @@ app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:4200',
     credentials: true
 }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Health check route
 app.get(`${API_PREFIX}/health`, (req, res) => {

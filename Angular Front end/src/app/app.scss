@@ -1,0 +1,36 @@
+.global-loading {
+	position: fixed;
+	inset: 0;
+	z-index: 999;
+	display: grid;
+	place-content: center;
+	gap: 0.75rem;
+	justify-items: center;
+	background: rgb(5 13 24 / 28%);
+	backdrop-filter: blur(4px);
+	color: #fff;
+	font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}
+
+.global-loading__spinner {
+	width: 58px;
+	height: 58px;
+	border-radius: 50%;
+	border: 5px solid rgb(255 255 255 / 28%);
+	border-top-color: #6ec6ff;
+	border-right-color: #6ec6ff;
+	animation: global-spin 780ms linear infinite;
+	box-shadow: 0 0 0 6px rgb(255 255 255 / 10%);
+}
+
+@keyframes global-spin {
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
+	}
+}

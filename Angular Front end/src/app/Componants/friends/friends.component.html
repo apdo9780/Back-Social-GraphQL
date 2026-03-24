@@ -1,0 +1,108 @@
+<section class="friends-page">
+  <header class="hero">
+    <p class="eyebrow">Network</p>
+    <h1>Friends Hub</h1>
+    <p class="subtitle">Manage requests, monitor presence, and keep your circle close.</p>
+    <div class="hero-meta">
+      <span>{{ requests().length }} pending</span>
+      <span>{{ friends().length }} connected</span>
+    </div>
+  </header>
+
+  <section class="panel panel-form">
+    <div class="section-head">
+      <h2>Find people</h2>
+      <p>Search by username, first name, last name, or email.</p>
+    </div>
+    <form [formGroup]="searchForm" (ngSubmit)="searchUsers()" class="request-form">
+      <label>
+        Search users
+        <input type="text" formControlName="query" placeholder="Type name, username, or email" />
+      </label>
+      <button type="submit">Search</button>
+    </form>
+
+    @if (isSearching()) {
+      <p>Searching users...</p>
+    } @else if (searchResults().length > 0) {
+      <ul class="search-results">
+        @for (user of searchResults(); track user._id) {
+          <li>
+            <div>
+              <strong>{{ user.username }}</strong>
+              @if (fullName(user)) {
+                <p>{{ fullName(user) }}</p>
+              }
+              <p>{{ user.email }}</p>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="muted" (click)="openProfile(user._id)">Profile</button>
+              <button type="button" class="muted" (click)="messageUser(user._id)">Message</button>
+              @if (canSendRequest(user._id)) {
+                <button type="button" (click)="sendRequestToUser(user._id)">Add friend</button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  @if (actionMessage()) {
+    <p class="message">{{ actionMessage() }}</p>
+  }
+
+  <div class="grid">
+    <section class="panel">
+      <div class="section-head">
+        <h2>Incoming requests</h2>
+        <span class="chip">{{ requests().length }}</span>
+      </div>
+      @if (requests().length === 0) {
+        <p>No pending requests.</p>
+      } @else {
+        <ul>
+          @for (request of requests(); track request._id) {
+            <li>
+              <div>
+                <strong>{{ request.sender.username }}</strong>
+                <p>{{ request.sender.email }}</p>
+              </div>
+              <div class="row-actions">
+                <button type="button" (click)="acceptRequest(request._id)">Accept</button>
+                <button type="button" class="muted" (click)="rejectRequest(request._id)">Reject</button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>Friends list</h2>
+        <span class="chip">{{ friends().length }}</span>
+      </div>
+      @if (isLoading()) {
+        <p>Loading friends...</p>
+      } @else if (friends().length === 0) {
+        <p>No friends yet.</p>
+      } @else {
+        <ul>
+          @for (friend of friends(); track friend._id) {
+            <li>
+              <div>
+                <strong>{{ friend.username }}</strong>
+                <span class="presence" [class.online]="presenceOf(friend._id) === 'online'">
+                  {{ presenceOf(friend._id) }}
+                </span>
+                <p>{{ friend.email }}</p>
+              </div>
+              <button type="button" class="muted" (click)="removeFriend(friend._id)">Remove</button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+</section>

@@ -1,0 +1,48 @@
+<section class="auth-page">
+  <div class="card">
+    <p class="eyebrow">Join the network</p>
+    <h1>Create your account</h1>
+    <p class="subtitle">Build your profile, discover friends, and start conversations instantly.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+      <label>
+        Username
+        <input type="text" formControlName="username" placeholder="your_username" />
+      </label>
+
+      <div class="split">
+        <label>
+          First name
+          <input type="text" formControlName="firstName" placeholder="Jane" />
+        </label>
+        <label>
+          Last name
+          <input type="text" formControlName="lastName" placeholder="Doe" />
+        </label>
+      </div>
+
+      <label>
+        Email
+        <input type="email" formControlName="email" placeholder="you@example.com" />
+      </label>
+
+      <label>
+        Password
+        <input type="password" formControlName="password" placeholder="At least 6 characters" />
+      </label>
+
+      <button type="submit" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Creating account...' : 'Create account' }}
+      </button>
+    </form>
+
+    @if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+    }
+
+    <p class="footnote">
+      Already have an account?
+      <a routerLink="/login">Sign in</a>
+    </p>
+  </div>
+</section>

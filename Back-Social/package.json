@@ -7,7 +7,7 @@
   "type": "commonjs",
   "main": "./dist/index.js",
   "scripts": {
-    "start": "nodemon ./dist/index.js"
+    "start": "npx tsc && nodemon ./dist/index.js"
   },
   "dependencies": {
     "@types/bcrypt": "^5.0.2",

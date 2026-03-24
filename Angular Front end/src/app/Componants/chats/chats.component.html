@@ -1,0 +1,122 @@
+<section class="chats-page">
+  <header class="hero">
+    <p class="eyebrow">Messaging</p>
+    <h1>Chats</h1>
+    <p class="subtitle">Move between threads, track unread activity, and answer in real time.</p>
+    <div class="hero-meta">
+      <span>{{ chats().length }} conversations</span>
+      @if (selectedChat()) {
+        <span>active thread</span>
+      }
+    </div>
+  </header>
+
+  @if (statusMessage()) {
+    <p class="status">{{ statusMessage() }}</p>
+  }
+
+  <section class="layout">
+    <aside class="panel chat-list">
+      <div class="section-head compact">
+        <h2>Conversations</h2>
+        <span class="chip">{{ chats().length }}</span>
+      </div>
+      @if (isLoadingChats()) {
+        <p>Loading chats...</p>
+      } @else if (chats().length === 0) {
+        <p>No chats yet.</p>
+      } @else {
+        <ul>
+          @for (chat of chats(); track chat._id) {
+            <li>
+              <button
+                type="button"
+                class="chat-item"
+                [class.active]="selectedChatId() === chat._id"
+                (click)="selectChat(chat._id)"
+              >
+                <img
+                  class="avatar"
+                  [src]="getChatAvatar(chat)"
+                  [alt]="getChatTitle(chat) + ' avatar'"
+                  (error)="onChatAvatarError($event, chat)"
+                />
+                <div class="chat-text">
+                  <strong>
+                    {{ getChatTitle(chat) }}
+                    @if (getUnreadCount(chat._id) > 0) {
+                      <span class="unread-badge">{{ getUnreadCount(chat._id) }}</span>
+                    }
+                  </strong>
+                  <span>{{ getChatSubtitle(chat) }}</span>
+                </div>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+
+    <section class="panel thread">
+      <div class="section-head compact">
+        <h2>Thread</h2>
+        @if (selectedChat()) {
+          <span class="chip">live</span>
+        }
+      </div>
+      @if (!selectedChat()) {
+        <p>Select a chat to view messages.</p>
+      } @else {
+        <div class="thread-scroll" #threadScroll>
+          @if (typingLabel()) {
+            <p class="typing">{{ typingLabel() }}</p>
+          }
+
+          @if (isLoadingMessages()) {
+            <p>Loading messages...</p>
+          } @else if (messages().length === 0) {
+            <p>No messages yet.</p>
+          } @else {
+            <div class="messages">
+              @for (message of messages(); track message._id) {
+                <article class="message" [class.own]="isOwnMessage(message)">
+                  <img
+                    class="message-avatar"
+                    [src]="getMessageAvatar(message)"
+                    [alt]="getMessageSenderName(message) + ' avatar'"
+                    (error)="onMessageAvatarError($event, message)"
+                  />
+                  <div class="message-bubble">
+                    <strong>{{ getMessageSenderName(message) }}</strong>
+                    <p>{{ message.content }}</p>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </div>
+
+        <form [formGroup]="sendMessageForm" (ngSubmit)="sendMessage()" class="inline-form">
+          <input
+            type="text"
+            formControlName="content"
+            placeholder="Type your message"
+            (input)="handleTyping()"
+          />
+          <button
+            type="submit"
+            class="send-btn"
+            [disabled]="isSendingMessage() || sendMessageForm.invalid || !selectedChatId()"
+          >
+            @if (isSendingMessage()) {
+              <span class="btn-spinner" aria-hidden="true"></span>
+              <span>Sending...</span>
+            } @else {
+              <span>Send</span>
+            }
+          </button>
+        </form>
+      }
+    </section>
+  </section>
+</section>

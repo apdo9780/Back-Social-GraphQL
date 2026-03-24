@@ -1,0 +1,110 @@
+<section class="shell">
+  <div class="ambient-orb orb-left" aria-hidden="true"></div>
+  <div class="ambient-orb orb-right" aria-hidden="true"></div>
+
+  <header class="main-nav">
+    <div class="brand-wrap">
+      <span class="brand-chip">Connect</span>
+      <div class="brand">Social Pulse</div>
+    </div>
+
+    <nav aria-label="Primary">
+      <a routerLink="/" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/friends" routerLinkActive="active">
+        Friends
+        @if (pendingFriendRequests() > 0) {
+          <span class="chat-badge">{{ pendingFriendRequests() }}</span>
+        }
+      </a>
+      <a routerLink="/chats" routerLinkActive="active">
+        Chats
+        @if (unreadChatsTotal() > 0) {
+          <span class="chat-badge">{{ unreadChatsTotal() }}</span>
+        }
+      </a>
+      <a routerLink="/posts" routerLinkActive="active">Posts</a>
+      <a routerLink="/settings" routerLinkActive="active">Settings</a>
+    </nav>
+
+    <div class="nav-actions">
+      <span class="live-pill" [class.offline]="!isSocketConnected()">
+        {{ isSocketConnected() ? 'Live' : 'Offline' }}
+      </span>
+
+      <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-pressed]="isDarkMode()">
+        {{ isDarkMode() ? 'Switch to Light' : 'Switch to Dark' }}
+      </button>
+
+      <button type="button" class="bell" (click)="toggleNotifications()" aria-label="Toggle notifications">
+        Notifications
+        @if (unreadCount() > 0) {
+          <span class="badge">{{ unreadCount() }}</span>
+        }
+      </button>
+
+      <button type="button" class="logout" (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  @if (showNotifications()) {
+    <section class="notifications">
+      <div class="notifications-head">
+        <h2>Live Activity</h2>
+        <span>{{ notifications().length }} items</span>
+      </div>
+      @if (notifications().length === 0) {
+        <p>No notifications yet.</p>
+      } @else {
+        <ul>
+          @for (item of notifications(); track item.id) {
+            <li
+              [class.clickable]="canOpenNotification(item)"
+              (click)="canOpenNotification(item) ? openNotificationTarget(item) : null"
+            >
+              <div class="notification-main">
+                <strong>{{ item.title }}</strong>
+                <p>{{ item.message }}</p>
+              </div>
+              <div class="notification-meta">
+                <time>{{ item.createdAt | date: 'shortTime' }}</time>
+                @if (canOpenNotification(item)) {
+                  <span class="tap-hint">Open</span>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  @if (toasts().length > 0) {
+    <section class="toast-stack" aria-live="polite" aria-label="Live alerts">
+      @for (toast of toasts(); track toast.id) {
+        <article
+          class="toast"
+          [class.friend]="toast.kind === 'friend'"
+          [class.message]="toast.kind === 'message'"
+          [class.clickable]="!!toast.target"
+          (click)="openToastTarget(toast)"
+        >
+          <div class="toast-head">
+            <strong>{{ toast.title }}</strong>
+            <button
+              type="button"
+              (click)="dismissToastFromEvent($event, toast.id)"
+              aria-label="Dismiss notification"
+            >
+              Close
+            </button>
+          </div>
+          <p>{{ toast.message }}</p>
+        </article>
+      }
+    </section>
+  }
+
+  <main class="page-content">
+    <router-outlet />
+  </main>
+</section>

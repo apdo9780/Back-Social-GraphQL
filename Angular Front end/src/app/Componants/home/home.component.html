@@ -1,0 +1,166 @@
+<section class="home">
+  <header class="hero">
+    <p class="eyebrow">Social App</p>
+    <h1>Dashboard</h1>
+    <p class="subtitle">Global feed with profile actions, messaging, and friend requests.</p>
+  </header>
+
+  @if (statusMessage()) {
+    <p class="status" [class.success]="statusType() === 'success'" [class.error]="statusType() === 'error'">
+      {{ statusMessage() }}
+    </p>
+  }
+
+  <section class="panel feed-panel">
+    <div class="feed-head">
+      <h2>Global Feed</h2>
+      <button type="button" (click)="loadFeed()" [disabled]="isLoadingFeed()">Refresh feed</button>
+    </div>
+
+    @if (isLoadingFeed()) {
+      <div class="skeleton-list" aria-label="Loading global feed">
+        <article class="skeleton-card"></article>
+        <article class="skeleton-card"></article>
+        <article class="skeleton-card"></article>
+      </div>
+    } @else if (feedPosts().length === 0) {
+      <p>No posts available yet.</p>
+    } @else {
+      <ul class="post-list">
+        @for (post of feedPosts(); track post._id) {
+          <li class="post-item" [attr.data-post-id]="post._id" [class.post-item-highlight]="isPostHighlighted(post._id)">
+            <header>
+              <div class="author-meta">
+                <img
+                  class="avatar post-avatar"
+                  [src]="getUserAvatar(post.author)"
+                  [alt]="post.author.username + ' avatar'"
+                  (error)="onAvatarError($event, post.author)"
+                  (click)="openUserProfile(post.author._id)"
+                />
+                <button type="button" class="author-link" (click)="openUserProfile(post.author._id)">
+                  {{ '@' + post.author.username }}
+                </button>
+              </div>
+              <time>{{ post.createdAt | date: 'short' }}</time>
+            </header>
+
+            <p>{{ post.content }}</p>
+
+            @if (post.media?.length) {
+              <img class="post-media" [src]="getDisplayImage(post.media?.[0])" alt="Post image" />
+            }
+
+            <div class="meta-row">
+              <button type="button" class="muted" (click)="toggleLike(post._id)">
+                {{ hasLiked(post) ? 'Unlike' : 'Like' }} ({{ post.likes.length }})
+              </button>
+              <button type="button" class="inline-link" (click)="toggleLikesPanel(post._id)">
+                {{ isLikesPanelOpen(post._id) ? 'Hide likes' : 'View likes' }}
+              </button>
+              <!-- @if (canMessageUser(post.author._id)) {
+                <button type="button" class="muted" (click)="startMessage(post.author._id)">Message</button>
+              } -->
+              <!-- @if (canSendFriendRequestTo(post.author._id)) {
+                <button type="button" class="muted" (click)="sendFriendRequest(post.author._id)">Send friend request</button>
+              } -->
+              <!-- @if (isOwnPost(post)) {
+                <button type="button" class="muted" (click)="openUserProfile(post.author._id)">View my profile</button>
+              } -->
+            </div>
+
+            @if (isLikesPanelOpen(post._id)) {
+              <div class="likes-panel">
+                @if (post.likes.length === 0) {
+                  <p class="likes-empty">No likes yet.</p>
+                } @else {
+                  <ul class="likes-list">
+                    @for (like of post.likes; track $index) {
+                      <li>
+                        @if (canOpenLikeProfile(like)) {
+                          <button type="button" class="like-user" (click)="openLikeProfile(like)">
+                            {{ getLikeDisplayName(like) }}
+                          </button>
+                        } @else {
+                          <span>{{ getLikeDisplayName(like) }}</span>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
+
+            <div class="comments">
+              <div class="comments-head">
+                <span>{{ post.comments.length }} comments</span>
+                <button type="button" class="ml-4 inline-link" (click)="toggleCommentsSection(post._id)">
+                  {{ isCommentsSectionCollapsed(post._id) ? 'comments' : 'comments' }}
+                </button>
+              </div>
+
+              @if (!isCommentsSectionCollapsed(post._id)) {
+                <div class="comments-scroll">
+                  @if (post.comments.length === 0) {
+                    <p class="comments-empty">No comments yet.</p>
+                  } @else {
+                    @for (comment of post.comments; track comment._id) {
+                      <article
+                        [attr.data-comment-id]="comment._id"
+                        [class.comment-highlight]="isCommentHighlighted(comment._id)"
+                      >
+                        <div class="comment-head">
+                          <div class="author-meta">
+                            <img
+                              class="avatar comment-avatar"
+                              [src]="getCommentAuthorAvatar(comment)"
+                              [alt]="getCommentAuthorName(comment) + ' avatar'"
+                              (error)="onAvatarError($event, typeof comment.user === 'string' ? null : comment.user)"
+                              (click)="openCommentAuthorProfile(comment)"
+                            />
+                            <button type="button" class="comment-author" (click)="openCommentAuthorProfile(comment)">
+                              {{ '@' + getCommentAuthorName(comment) }}
+                            </button>
+                          </div>
+                          @if (comment.createdAt) {
+                            <time>{{ comment.createdAt | date: 'short' }}</time>
+                          }
+                        </div>
+                        <p>{{ comment.content }}</p>
+
+                        <!-- <div class="comment-actions">
+                          <button type="button" class="muted" (click)="openCommentAuthorProfile(comment)">
+                            Profile
+                          </button>
+                          @if (canMessageCommentUser(comment)) {
+                            <button type="button" class="muted" (click)="messageCommentAuthor(comment)">
+                              Message
+                            </button>
+                          }
+                          @if (canSendFriendRequestToCommentUser(comment)) {
+                            <button type="button" class="muted" (click)="sendFriendRequestToCommentAuthor(comment)">
+                              Add friend
+                            </button>
+                          }
+                        </div> -->
+                      </article>
+                    }
+                  }
+                </div>
+
+                <div class="comment-box">
+                  <input
+                    type="text"
+                    placeholder="Write a comment"
+                    [(ngModel)]="commentDrafts[post._id]"
+                  />
+                  <button type="button" class="muted" (click)="submitComment(post._id)">Comment</button>
+                </div>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</section>

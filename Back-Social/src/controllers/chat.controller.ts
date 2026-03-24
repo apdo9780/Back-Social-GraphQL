@@ -44,7 +44,7 @@ export const accessChat = async (req: IAuthRequest, res: Response, next: NextFun
             chat = await chat.populate('latestMessage.sender', 'username avatar');
             
             // Notify the other user that chat was accessed
-            socketService.emitToUser(userId, 'chat accessed', {
+            socketService.emitToUser(userId, 'chat_accessed', {
                 chat,
                 accessedBy: req.user
             });
@@ -60,8 +60,8 @@ export const accessChat = async (req: IAuthRequest, res: Response, next: NextFun
 
             // Notify both users about new chat
             if (req.user?._id) {
-                socketService.emitToUser(userId, 'new chat', { chat });
-                socketService.emitToUser(req.user._id, 'new chat', { chat });
+                socketService.emitToUser(userId, 'new_chat', { chat });
+                socketService.emitToUser(req.user._id, 'new_chat', { chat });
             }
         }
 

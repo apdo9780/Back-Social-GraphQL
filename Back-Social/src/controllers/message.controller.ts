@@ -70,7 +70,7 @@ console.log(populatedMessage ,"populatedMessage");
             // Send the message to all users in the chat except the sender
             chatUsers.forEach((user: IUser) => {
                 if (user._id.toString() !== req.user?._id.toString()) {
-                    socketService.emitToUser(user._id.toString(), 'new message', {
+                    socketService.emitToUser(user._id.toString(), 'new_message', {
                         message: populatedMessage,
                         chat: populatedMessage.chat
                     });
@@ -80,7 +80,7 @@ console.log(populatedMessage ,"populatedMessage");
 
         // Send delivered status back to sender
         if (req.user?._id) {
-            socketService.emitToUser(req.user._id.toString(), 'message delivered', {
+            socketService.emitToUser(req.user._id.toString(), 'message_delivered', {
                 messageId: populatedMessage._id,
                 chatId: populatedMessage.chat._id
             });

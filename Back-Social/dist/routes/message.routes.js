@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middlewares/auth");
+const message_controller_1 = require("../controllers/message.controller");
+const validators_1 = require("../validators");
+const router = (0, express_1.Router)();
+router.route('/:chatId').get(auth_1.protect, message_controller_1.allMessages);
+router.route('/').post(auth_1.protect, validators_1.validateSendMessage, message_controller_1.sendMessage, message_controller_1.markMessagesAsRead);
+router.route('/:chatId/read').put(auth_1.protect, message_controller_1.markMessagesAsRead);
+exports.default = router;

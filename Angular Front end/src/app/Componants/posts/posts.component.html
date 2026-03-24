@@ -1,0 +1,148 @@
+<section class="posts-page">
+  <header class="hero">
+    <p class="eyebrow">Community</p>
+    <h1>Share Your Story</h1>
+    <p class="subtitle">Publish updates, upload photos, and keep your friends in the loop.</p>
+    <div class="hero-meta">
+      <span>{{ myPosts().length }} published</span>
+      <span>1000 chars max</span>
+      <span>{{ newPostPrivacy | titlecase }} visibility</span>
+    </div>
+  </header>
+
+  @if (statusMessage()) {
+    <p class="status" [class.success]="statusType() === 'success'" [class.error]="statusType() === 'error'">
+      {{ statusMessage() }}
+    </p>
+  }
+
+  <section class="card composer">
+    <div class="section-head">
+      <h2>Create a post</h2>
+      <p>Compose text, and optionally upload an image.</p>
+    </div>
+
+    <div class="composer-head">
+      <p>Write something meaningful to start a conversation.</p>
+      <span>{{ newPostContent.trim().length }}/1000</span>
+    </div>
+
+    <textarea
+      [(ngModel)]="newPostContent"
+      [disabled]="isSubmitting()"
+      maxlength="1000"
+      placeholder="What do you want to share?"
+    ></textarea>
+
+    <div class="compose-grid">
+      <label>
+        Privacy
+        <select [(ngModel)]="newPostPrivacy" [disabled]="isSubmitting()">
+          <option value="public">Public</option>
+          <option value="friends">Friends</option>
+          <option value="private">Private</option>
+        </select>
+      </label>
+
+      <label>
+        <!-- Tags (comma separated)
+        <input
+          type="text"
+          [(ngModel)]="newPostTags"
+          [disabled]="isSubmitting()"
+          placeholder="travel, work, update"
+        /> -->
+      </label>
+
+      <label>
+        Image
+        <input
+          #postImageInput
+          class="file-input-hidden"
+          type="file"
+          accept="image/*"
+          [disabled]="isSubmitting()"
+          (change)="onPostImageSelected($event)"
+        />
+        <div
+          class="dropzone"
+          role="button"
+          tabindex="0"
+          [class.active]="isPostImageDragOver()"
+          [class.disabled]="isSubmitting()"
+          (click)="!isSubmitting() && triggerPostImagePicker(postImageInput)"
+          (keydown)="onPostDropZoneKeydown($event, postImageInput)"
+          (dragover)="!isSubmitting() && onPostImageDragOver($event)"
+          (dragleave)="onPostImageDragLeave($event)"
+          (drop)="!isSubmitting() && onPostImageDrop($event)"
+        >
+          <p class="dropzone-title">Drop image here</p>
+          <p class="dropzone-subtitle">or click to browse</p>
+        </div>
+        <small>{{ selectedImageFile?.name || 'No image selected' }}</small>
+      </label>
+    </div>
+
+    <div class="composer-actions">
+      <button type="button" class="muted" (click)="newPostContent = ''; newPostTags = ''; selectedImageFile = null" [disabled]="isSubmitting()">
+        Reset
+      </button>
+      <button type="button" (click)="createPost()" [disabled]="isSubmitting() || !newPostContent.trim()">
+        {{ isSubmitting() ? 'Publishing...' : 'Publish post' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="card my-posts">
+    <div class="section-head">
+      <h2>Your posts</h2>
+      <div class="section-actions">
+        <span class="chip">{{ myPosts().length }}</span>
+        <button type="button" class="muted" (click)="fetchMine()" [disabled]="isLoading()">Refresh</button>
+      </div>
+    </div>
+
+    @if (myPosts().length === 0) {
+      <div class="placeholder">
+        <h3>No posts yet</h3>
+        <p>Your published posts will appear here.</p>
+      </div>
+    } @else {
+      <ul class="post-list">
+        @for (post of myPosts(); track post._id) {
+          <li class="post-item">
+            <header>
+              <div class="author-meta">
+                <img
+                  class="avatar post-avatar"
+                  [src]="getUserAvatar(post.author)"
+                  [alt]="post.author.username + ' avatar'"
+                  (error)="onAvatarError($event, post.author)"
+                  (click)="openUserProfile(post.author._id)"
+                />
+                <strong>{{ post.author.username }}</strong>
+              </div>
+              <time>{{ post.createdAt | date: 'short' }}</time>
+            </header>
+
+            <p class="post-content">{{ post.content }}</p>
+
+            @if (post.media?.length) {
+              <img class="post-media" [src]="getDisplayImage(post.media?.[0])" alt="Post image" />
+            }
+
+            <footer>
+              <button type="button" class="muted" (click)="toggleLike(post._id)">
+                {{ hasLiked(post) ? 'Unlike' : 'Like' }} ({{ post.likes.length }})
+              </button>
+              @if (canDelete(post)) {
+                <button type="button" class="danger" (click)="deletePost(post._id)">Delete</button>
+              }
+            </footer>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+</section>

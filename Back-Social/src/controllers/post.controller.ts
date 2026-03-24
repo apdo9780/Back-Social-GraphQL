@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { Post, IPost } from '../models/post.model';
+import { Post } from '../models/post.model';
 import { IUser, User } from '../models/user.model';
 import mongoose from 'mongoose';
-import { log } from 'node:console';
 import { getSocketInstance } from '../services/socket-context';
 
 
@@ -10,30 +9,80 @@ interface IAuthRequest extends Request {
     user?: IUser & {
         _id: mongoose.Types.ObjectId;
     };
+    file?: Express.Multer.File;
 }
+
+interface IPostInteractionPayload {
+    type: 'like' | 'comment';
+    postId: string;
+    commentId?: string;
+    actorId: string;
+    actorName: string;
+    post: unknown;
+}
+
+const populatedPostQuery = Post.find()
+    .populate('author', '_id username avatar email firstName lastName role bio')
+    .populate('comments.user', '_id username email avatar firstName lastName role bio')
+    .populate('likes', '_id username avatar email firstName lastName role bio');
+
+const toArrayOfTags = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+        return value
+            .map((tag) => String(tag).trim())
+            .filter((tag) => tag.length > 0);
+    }
+
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0);
+    }
+
+    return [];
+};
 
 // @desc    Create new post
 // @route   POST /api/posts
 // @access  Private
 export const createPost = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-        // Add user to req.body
-        req.body.author = req.user?._id;
-         console.log(req.body);
-          
-        
-       
+        if (!req.user?._id) {
+            res.status(401).json({
+                success: false,
+                error: 'Not authorized to access this route'
+            });
+            return;
+        }
 
-        const post:any = await Post.create(req.body);
-        const  id:string = post._id.toString();
-  const user = await User.findByIdAndUpdate(req.user?._id, { $push: { posts: id } }, {
-                    new: true,
-                    runValidators: true
-                });
+        const media = req.file ? [`/uploads/posts/${req.file.filename}`] : [];
+        const payload = {
+            author: req.user._id,
+            content: req.body.content,
+            privacy: req.body.privacy,
+            tags: toArrayOfTags(req.body.tags),
+            media
+        };
+
+        const post = await Post.create(payload);
+        await User.findByIdAndUpdate(
+            req.user._id,
+            { $push: { posts: post._id } },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        const hydratedPost = await Post.findById(post._id)
+            .populate('author', '_id username avatar email firstName lastName role bio')
+            .populate('comments.user', '_id username email avatar firstName lastName role bio')
+            .populate('likes', '_id username avatar email firstName lastName role bio');
 
         res.status(201).json({
             success: true,
-            data: post
+            data: hydratedPost
         });
     } catch (error) {
         next(error);
@@ -42,18 +91,34 @@ export const createPost = async (req: IAuthRequest, res: Response, next: NextFun
 
 // @desc    Get all posts
 // @route   GET /api/posts
-// @access  Public
-export const getPosts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// @access  Private
+export const getPosts = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const posts = await Post.find({ privacy: { $ne: "private" } }) // Exclude private posts
-            .populate('author', '_id username avatar email firstName lastName role bio')
-            .populate('comments.user', '_id username email avatar firstName lastName role bio')
-            .populate('likes', '_id username avatar email firstName lastName role bio')
+        if (!req.user?._id) {
+            res.status(401).json({
+                success: false,
+                error: 'Not authorized to access this route'
+            });
+            return;
+        }
+
+        const currentUser = await User.findById(req.user._id).select('friends');
+        const visibleFriendAuthors = [
+            req.user._id,
+            ...((currentUser?.friends ?? []) as mongoose.Types.ObjectId[])
+        ];
+
+        const posts = await populatedPostQuery.clone()
+            .find({
+                $or: [
+                    { privacy: 'public' },
+                    {
+                        privacy: 'friends',
+                        author: { $in: visibleFriendAuthors }
+                    }
+                ]
+            })
             .sort('-createdAt');
-
-         
-         
-
 
         res.status(200).json({
             success: true,
@@ -67,13 +132,13 @@ export const getPosts = async (req: Request, res: Response, next: NextFunction):
 
 // @desc    Get single post
 // @route   GET /api/posts/:id
-// @access  Public
+// @access  Private
 export const getPost = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const post = await Post.find({ author: req.user?.id } )
-            .populate('author', '-_id username avatar')
-            .populate('comments.user', '-_id username email avatar')
-            .populate('likes',    '-_id username email avatar');
+        const post = await Post.findById(req.params.id)
+            .populate('author', '_id username avatar email firstName lastName role bio')
+            .populate('comments.user', '_id username email avatar firstName lastName role bio')
+            .populate('likes', '_id username avatar email firstName lastName role bio');
 
         if (!post) {
             res.status(404).json({
@@ -83,9 +148,85 @@ export const getPost = async (req: IAuthRequest, res: Response, next: NextFuncti
             return;
         }
 
+        if (
+            post.privacy === 'private' &&
+            post.author?._id?.toString() !== req.user?._id?.toString()
+        ) {
+            res.status(403).json({
+                success: false,
+                error: 'User not authorized to view this post'
+            });
+            return;
+        }
+
         res.status(200).json({
             success: true,
             data: post
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get current user posts
+// @route   GET /api/posts/mine
+// @access  Private
+export const getMyPosts = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        if (!req.user?._id) {
+            res.status(401).json({
+                success: false,
+                error: 'Not authorized to access this route'
+            });
+            return;
+        }
+
+        const posts = await Post.find({ author: req.user._id })
+            .populate('author', '_id username avatar email firstName lastName role bio')
+            .populate('comments.user', '_id username email avatar firstName lastName role bio')
+            .populate('likes', '_id username avatar email firstName lastName role bio')
+            .sort('-createdAt');
+
+        res.status(200).json({
+            success: true,
+            count: posts.length,
+            data: posts
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get posts by author
+// @route   GET /api/posts/user/:userId
+// @access  Private
+export const getPostsByAuthor = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            res.status(400).json({
+                success: false,
+                error: 'Invalid user ID format'
+            });
+            return;
+        }
+
+        const isCurrentUser = req.user?._id?.toString() === userId;
+        const filter = isCurrentUser
+            ? { author: userId }
+            : { author: userId, privacy: { $ne: 'private' } };
+
+        const posts = await Post.find(filter)
+            .populate('author', '_id username avatar email firstName lastName role bio')
+            .populate('comments.user', '_id username email avatar firstName lastName role bio')
+            .populate('likes', '_id username avatar email firstName lastName role bio')
+            .sort('-createdAt');
+
+        res.status(200).json({
+            success: true,
+            count: posts.length,
+            data: posts
         });
     } catch (error) {
         next(error);
@@ -116,10 +257,21 @@ export const updatePost = async (req: IAuthRequest, res: Response, next: NextFun
             return;
         }
 
-        post = await Post.findByIdAndUpdate(req.params.id, req.body, {
+        const media = req.file ? [`/uploads/posts/${req.file.filename}`] : post.media;
+        const updatePayload = {
+            content: req.body.content,
+            privacy: req.body.privacy,
+            tags: req.body.tags ? toArrayOfTags(req.body.tags) : post.tags,
+            media
+        };
+
+        post = await Post.findByIdAndUpdate(req.params.id, updatePayload, {
             new: true,
             runValidators: true,
-        });
+        })
+            .populate('author', '_id username avatar email firstName lastName role bio')
+            .populate('comments.user', '_id username email avatar firstName lastName role bio')
+            .populate('likes', '_id username avatar email firstName lastName role bio');
 
         res.status(200).json({
             success: true,
@@ -155,6 +307,7 @@ export const deletePost = async (req: IAuthRequest, res: Response, next: NextFun
         }
 
         await post.deleteOne();
+        await User.findByIdAndUpdate(req.user?._id, { $pull: { posts: post._id } });
 
         res.status(200).json({
             success: true,
@@ -170,8 +323,7 @@ export const deletePost = async (req: IAuthRequest, res: Response, next: NextFun
 // @access  Private
 export const likePost = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-        console.log('request to like post', req.params.id, );
-              const socketService = getSocketInstance();
+        const socketService = getSocketInstance();
         
         const post = await Post.findById(req.params.id);
 
@@ -183,7 +335,17 @@ export const likePost = async (req: IAuthRequest, res: Response, next: NextFunct
             return;
         }
 
-        const userId:any = req.user?._id;
+        const userId = req.user?._id;
+        if (!userId) {
+            res.status(401).json({
+                success: false,
+                error: 'Not authorized to access this route'
+            });
+            return;
+        }
+
+        const wasLiked = post.likes.some(like => like.equals(userId));
+
         // Check if post has already been liked
         if (post.likes.some(like => like.equals(userId))) {
             // Unlike
@@ -191,18 +353,45 @@ export const likePost = async (req: IAuthRequest, res: Response, next: NextFunct
         } else {
             // Like
             post.likes.push(userId);
-
-             socketService.emitToUser(post.author.toString(), 'new Like', {
-                        message: `Your Post: ${post.content} Got Alike`,
-                    });
         }
 
         await post.save();
-     
+
+        const hydratedPost = await Post.findById(post._id)
+            .populate('author', '_id username avatar email firstName lastName role bio')
+            .populate('comments.user', '_id username email avatar firstName lastName role bio')
+            .populate('likes', '_id username avatar email firstName lastName role bio');
+
+        if (hydratedPost) {
+            const actorName = req.user?.username ?? 'Someone';
+            const actorId = userId.toString();
+            const authorId = post.author.toString();
+
+            const interactionPayload: IPostInteractionPayload = {
+                type: 'like',
+                postId: req.params.id,
+                actorId,
+                actorName,
+                post: hydratedPost
+            };
+
+            // Keep all clients in sync for this post in feed views.
+            socketService.broadcastEvent('post_updated', interactionPayload);
+
+            if (!wasLiked && authorId !== actorId) {
+                socketService.emitToUser(authorId, 'post_interaction', interactionPayload);
+                socketService.emitToUser(authorId, 'new Like', {
+                    message: `Your post got a new like.`,
+                    postId: req.params.id,
+                    actorId,
+                    actorName
+                });
+            }
+        }
 
         res.status(200).json({
             success: true,
-            data: post
+            data: hydratedPost ?? post
         });
     } catch (error) {
         next(error);
@@ -215,7 +404,7 @@ export const likePost = async (req: IAuthRequest, res: Response, next: NextFunct
 export const addComment = async (req: IAuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const post = await Post.findById(req.params.id);
-              const socketService = getSocketInstance();
+        const socketService = getSocketInstance();
 
 
         if (!post) {
@@ -243,13 +432,44 @@ export const addComment = async (req: IAuthRequest, res: Response, next: NextFun
         post.comments.unshift(newComment);
 
         await post.save();
-          socketService.emitToUser(post.author.toString(), 'new Comment', {
-                        message: `Your Post: ${post.content} Got A Comment`,
-                    });
+
+        const updatedPost = await Post.findById(post._id)
+            .populate('author', '_id username avatar email firstName lastName role bio')
+            .populate('comments.user', '_id username email avatar firstName lastName role bio')
+            .populate('likes', '_id username avatar email firstName lastName role bio');
+
+        if (updatedPost) {
+            const actorId = req.user._id.toString();
+            const actorName = req.user.username ?? 'Someone';
+            const authorId = post.author.toString();
+
+            const interactionPayload: IPostInteractionPayload = {
+                type: 'comment',
+                postId: req.params.id,
+                commentId: post.comments[0]?._id?.toString(),
+                actorId,
+                actorName,
+                post: updatedPost
+            };
+
+            // Keep all clients in sync for this post in feed views.
+            socketService.broadcastEvent('post_updated', interactionPayload);
+
+            if (authorId !== actorId) {
+                socketService.emitToUser(authorId, 'post_interaction', interactionPayload);
+                socketService.emitToUser(authorId, 'new Comment', {
+                    message: `Your post got a new comment.`,
+                    postId: req.params.id,
+                    commentId: post.comments[0]?._id?.toString(),
+                    actorId,
+                    actorName
+                });
+            }
+        }
 
         res.status(200).json({
             success: true,
-            data: post
+            data: updatedPost
         });
     } catch (error) {
         next(error);
