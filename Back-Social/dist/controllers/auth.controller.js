@@ -290,7 +290,7 @@ const updateAvatar = (req, res, next) => __awaiter(void 0, void 0, void 0, funct
             });
             return;
         }
-        const avatar = `/uploads/avatars/${req.file.filename}`;
+        const avatar = `https://socialapp-production-b586.up.railway.app/uploads/avatars/${req.file.filename}`;
         const user = yield user_model_1.User.findByIdAndUpdate(req.user._id, { avatar }, {
             new: true,
             runValidators: true

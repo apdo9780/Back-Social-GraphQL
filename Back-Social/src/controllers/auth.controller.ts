@@ -314,7 +314,7 @@ export const updateAvatar = async (req: IAuthRequest, res: Response, next: NextF
             return;
         }
 
-        const avatar = `/uploads/avatars/${req.file.filename}`;
+        const avatar = `https://socialapp-production-b586.up.railway.app/uploads/avatars/${req.file.filename}`;
         const user = await User.findByIdAndUpdate(
             req.user._id,
             { avatar },
