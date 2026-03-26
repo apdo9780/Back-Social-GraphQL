@@ -6,7 +6,19 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 
 export default async () => {
   const schema = makeExecutableSchema({ typeDefs, resolvers });
-  const server = new ApolloServer({ schema,plugins: [ApolloServerPluginLandingPageLocalDefault({ embed: true })], });
+
+const server = new ApolloServer({ 
+  schema,
+
+  introspection: true, 
+  
+  plugins: [
+    ApolloServerPluginLandingPageLocalDefault({ 
+      embed: true,
+      footer: false 
+    })
+  ], 
+});
   await server.start();
   
   return { server, schema };
