@@ -6,16 +6,16 @@ dotenv.config();
 
 // 1. تعريف الـ Client بره عشان نعمله Export
 export const s3Client = new S3Client({
-  region: process.env.region,
-  endpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000',
+  region: process.env.AWS_DEFAULT_REGION,
+  endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:9000',
   credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY || 'admin',
-    secretAccessKey: process.env.MINIO_SECRET_KEY || 'password123',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'admin',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'password123',
   },
-  forcePathStyle: true,
+  forcePathStyle: false,
 });
 
-export const BUCKET_NAME = process.env.MINIO_BUCKET_NAME || 'social-media-uploads';
+export const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'social-media-uploads';
     const policy = {
   Version: "2012-10-17",
   Statement: [
@@ -33,7 +33,6 @@ export const BUCKET_NAME = process.env.MINIO_BUCKET_NAME || 'social-media-upload
 // 2. الفانكشن اللي هتقوم مع بداية السيرفر
 export default async (): Promise<void> => {
   try {
-
 
 
     // السطر ده بيسأل MinIO: هل الباكيت ده موجود؟
