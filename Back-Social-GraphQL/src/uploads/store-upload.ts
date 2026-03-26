@@ -58,8 +58,5 @@ export async function storeImageUpload(params: {
     throw new Error('Failed to upload image to storage');
   }
 
-  const endpoint = process.env.MINIO_ENDPOINT || 'http://localhost:9000';
-  const fileUrl = `${endpoint}/${BUCKET_NAME}/${objectKey}`;
-
-  return { filename: finalName, relativeUrlPath: fileUrl };
+  return { filename: finalName, relativeUrlPath: objectKey };
 }
