@@ -18,6 +18,18 @@ function requireUser(ctx: GraphQLContext) {
   }
   return ctx.user;
 }
+const getPublicUrl = (key: string | null): string | null => {
+  if (!key) return null;
+  if (key.startsWith('http')) return key;
+
+  const endpoint = process.env.AWS_ENDPOINT_URL || 'https://t3.storageapi.dev';
+  const bucket = process.env.AWS_S3_BUCKET_NAME || 'roomy-chamber-fae8rvab1ih';
+  
+  const cleanEndpoint = endpoint.replace('https://', '').replace('http://', '');
+  
+  // تطبيق الـ Virtual-Hosted-Style
+  return `https://${bucket}.${cleanEndpoint}/${key}`;
+};
 
 const DateTime = new GraphQLScalarType({
   name: 'DateTime',
@@ -44,7 +56,17 @@ const populatedPost = () =>
 export const resolvers = {
   Upload: GraphQLUpload,
   DateTime,
-
+User: {
+    avatar: (parent: any) => getPublicUrl(parent.avatar),
+  },
+  
+  Post: {
+    media: (parent: any) => {
+      if (!parent.media || !Array.isArray(parent.media)) return [];
+      return parent.media.map((key: string) => getPublicUrl(key));
+    },
+  },
+  
   Query: {
     health: () => ({
       status: 'success',

@@ -49,10 +49,4 @@ export default async (): Promise<void> => {
       process.exit(1);
     }
   }
-  finally{
-   await s3Client.send(new PutBucketPolicyCommand({
-  Bucket: BUCKET_NAME,
-  Policy: JSON.stringify(policy),
-}));
-  }
 };
